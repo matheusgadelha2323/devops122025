@@ -1,0 +1,70 @@
+pipeline {
+    agent any
+
+    environment {
+        DOCKERFILE_WEB   = 'Dockerfileweb'      // Nome do Dockerfile da imagem web
+        DOCKERFILE_DB    = 'Dockerfiledb'       // Nome do Dockerfile da imagem db
+        DOCKERFILE_NGINX = 'Dockerfilenginx'    // Nome do Dockerfile da imagem nginx
+        DOCKER_IMAGE_TAG = 'latest'             // Tag das imagens Docker
+    }
+
+    stages {
+
+        stage('Build Images') {
+            steps {
+                script {
+                    // Nome das imagens
+                    def imageNameWeb   = 'matheusgadelha2323/web'
+                    def imageNameDB    = 'matheusgadelha2323/db'
+                    def imageNameNginx = 'matheusgadelha2323/nginx'
+
+                    // Build e push das imagens
+                    docker.withRegistry('https://registry.hub.docker.com', 'dockerhubmatheus') {
+
+                        def webImage = docker.build(
+                            "${imageNameWeb}:${DOCKER_IMAGE_TAG}",
+                            "-f ${DOCKERFILE_WEB} ."
+                        )
+
+                        def dbImage = docker.build(
+                            "${imageNameDB}:${DOCKER_IMAGE_TAG}",
+                            "-f ${DOCKERFILE_DB} ."
+                        )
+
+                        def nginxImage = docker.build(
+                            "${imageNameNginx}:${DOCKER_IMAGE_TAG}",
+                            "-f ${DOCKERFILE_NGINX} ."
+                        )
+
+                        webImage.push()
+                        dbImage.push()
+                        nginxImage.push()
+                    }
+                }
+            }
+        }
+
+        stage('Teste Aplicação') {
+            steps {
+                // Remove containers antigos
+                sh 'docker rm -f web db nginx || true'
+
+                // Sobe a aplicação
+                sh 'docker compose -f docker-compose.yml up -d'
+
+                // Teste simples de disponibilidade
+                sh 'curl -I http://localhost'
+
+                // Derruba os containers
+                sh 'docker compose -f docker-compose.yml down'
+            }
+        }
+
+        stage('Aprovação') {
+            steps {
+                input 'Deseja prosseguir com o Deploy e Push?'
+            }
+        }
+    }
+}
+
