@@ -34,7 +34,7 @@
         mode: '0775'
     - name: 'Download e Extração do arquivo da aplicação'
       unarchive:
-        src: devops042025/web.zip
+        src: web/web.zip
         dest: /srv/www/express
     - name: 'Substitui Ip de Conexão com o Banco'
       replace:
